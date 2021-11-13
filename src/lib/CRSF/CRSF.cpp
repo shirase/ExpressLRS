@@ -85,7 +85,7 @@ uint32_t CRSF::UARTwdtLastChecked;
 
 uint8_t CRSF::CRSFoutBuffer[CRSF_MAX_PACKET_LEN] = {0};
 uint8_t CRSF::maxPacketBytes = CRSF_MAX_PACKET_LEN;
-uint32_t CRSF::TxToHandsetBauds[] = {921600, 115200, 400000, 1870000, 3750000};
+uint32_t CRSF::TxToHandsetBauds[] = {400000, 115200, 921600, 1870000, 3750000};
 uint8_t CRSF::UARTcurrentBaudIdx = 0;
 
 bool CRSF::CRSFstate = false;
@@ -543,10 +543,10 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
 {
     uint8_t *SerialInBuffer = CRSF::inBuffer.asUint8_t;
 
-    // if (UARTwdt())
-    // {
-    //     return;
-    // }
+    if (UARTwdt())
+    {
+        return;
+    }
 
     while (CRSF::Port.available())
     {
@@ -832,7 +832,7 @@ void ICACHE_RAM_ATTR CRSF::ESP32uartTask(void *pvParameters)
     {
         handleUARTin();
 #if (GPIO_PIN_DEBUG_RX != GPIO_PIN_DEBUG_TX)
-        handleUARTout();
+        //handleUARTout();
 #endif
     }
 }
