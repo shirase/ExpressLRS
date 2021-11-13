@@ -8,7 +8,7 @@
  * DBG / DBGV - Print messag with optional format specifier (Serial.printf(x, ...))
  * DBGLN / DBGVLN - Same as DBG except also includes newline
  * DBGW / DBGVW - Write a single byte to logging (Serial.write(x))
- * 
+ *
  * Set LOGGING_UART define to Serial instance to use if not Serial
  **/
 
@@ -19,7 +19,10 @@
   #endif
 #endif
 
-#ifndef LOGGING_UART
+#if defined(TARGET_TX)
+extern HardwareSerial LoggingBackpack;
+#define LOGGING_UART LoggingBackpack
+#else
 #define LOGGING_UART Serial
 #endif
 

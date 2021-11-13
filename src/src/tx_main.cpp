@@ -49,6 +49,7 @@ POWERMGNT POWERMGNT;
 MSP msp;
 ELRS_EEPROM eeprom;
 TxConfig config;
+HardwareSerial LoggingBackpack(2);
 
 volatile uint8_t NonceTX;
 
@@ -652,7 +653,7 @@ static void BackpackWiFiToMSPOut(uint16_t command)
   packet.function = command;
   packet.addByte(0);
 
-  msp.sendPacket(&packet, &Serial); // send to tx-backpack as MSP
+  msp.sendPacket(&packet, &LoggingBackpack); // send to tx-backpack as MSP
 }
 
 void BackpackBinding()
@@ -668,7 +669,7 @@ void BackpackBinding()
   packet.addByte(MasterUID[4]);
   packet.addByte(MasterUID[5]);
 
-  msp.sendPacket(&packet, &Serial); // send to tx-backpack as MSP
+  msp.sendPacket(&packet, &LoggingBackpack); // send to tx-backpack as MSP
 }
 #endif // USE_TX_BACKPACK
 
@@ -901,7 +902,7 @@ static void setupTarget()
 
 void setup()
 {
-  Serial.begin(460800);
+  LoggingBackpack.begin(460800, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
   setupTarget();
 
   // Initialise the UI devices
@@ -942,12 +943,19 @@ void setup()
     ChangeRadioParams();
 
     hwTimer.init();
-    //hwTimer.resume();  //uncomment to automatically start the RX timer and leave it running
     connectionState = noCrossfire;
-    crsf.Begin();
   }
 
   devicesStart();
+
+  if (init_success)
+  {
+    crsf.Begin();
+#if defined(DEBUG_FREERUN_TX)
+    crsf.CRSFstate = true;
+    UARTconnected();
+#endif
+  }
 }
 
 void loop()
@@ -982,9 +990,9 @@ void loop()
   CheckConfigChangePending();
   DynamicPower_Update();
 
-  if (Serial.available())
+  if (LoggingBackpack.available())
   {
-    if (msp.processReceivedByte(Serial.read()))
+    if (msp.processReceivedByte(LoggingBackpack.read()))
     {
       // Finished processing a complete packet
       ProcessMSPPacket(msp.getReceivedPacket());

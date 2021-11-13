@@ -5,7 +5,7 @@
 #include "helpers.h"
 
 #if defined(PLATFORM_ESP32)
-HardwareSerial CRSF::Port = HardwareSerial(1);
+HardwareSerial CRSF::Port(0);
 portMUX_TYPE FIFOmux = portMUX_INITIALIZER_UNLOCKED;
 TaskHandle_t xESP32uartTask = NULL;
 #elif defined(PLATFORM_ESP8266)
@@ -85,7 +85,7 @@ uint32_t CRSF::UARTwdtLastChecked;
 
 uint8_t CRSF::CRSFoutBuffer[CRSF_MAX_PACKET_LEN] = {0};
 uint8_t CRSF::maxPacketBytes = CRSF_MAX_PACKET_LEN;
-uint32_t CRSF::TxToHandsetBauds[] = {400000, 115200, 921600, 1870000, 3750000};
+uint32_t CRSF::TxToHandsetBauds[] = {921600, 115200, 400000, 1870000, 3750000};
 uint8_t CRSF::UARTcurrentBaudIdx = 0;
 
 bool CRSF::CRSFstate = false;
@@ -543,10 +543,10 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
 {
     uint8_t *SerialInBuffer = CRSF::inBuffer.asUint8_t;
 
-    if (UARTwdt())
-    {
-        return;
-    }
+    // if (UARTwdt())
+    // {
+    //     return;
+    // }
 
     while (CRSF::Port.available())
     {
@@ -686,6 +686,7 @@ void ICACHE_RAM_ATTR CRSF::handleUARTout()
 void ICACHE_RAM_ATTR CRSF::duplex_set_RX()
 {
 #if defined(PLATFORM_ESP32)
+  #if (GPIO_PIN_RCSIGNAL_TX == GPIO_PIN_RCSIGNAL_RX)
     ESP_ERROR_CHECK(gpio_set_direction((gpio_num_t)GPIO_PIN_RCSIGNAL_RX, GPIO_MODE_INPUT));
     gpio_matrix_in((gpio_num_t)GPIO_PIN_RCSIGNAL_RX, U1RXD_IN_IDX, true);
     #ifdef UART_INVERTED
@@ -697,6 +698,7 @@ void ICACHE_RAM_ATTR CRSF::duplex_set_RX()
     gpio_pullup_en((gpio_num_t)GPIO_PIN_RCSIGNAL_RX);
     gpio_pulldown_dis((gpio_num_t)GPIO_PIN_RCSIGNAL_RX);
     #endif
+  #endif
 #elif defined(PLATFORM_ESP8266)
     // Enable loopback on UART0 to connect the RX pin to the TX pin
     //USC0(UART0) |= BIT(UCLBE);
@@ -710,6 +712,7 @@ void ICACHE_RAM_ATTR CRSF::duplex_set_RX()
 void ICACHE_RAM_ATTR CRSF::duplex_set_TX()
 {
 #if defined(PLATFORM_ESP32)
+  #if (GPIO_PIN_RCSIGNAL_TX == GPIO_PIN_RCSIGNAL_RX)
     gpio_matrix_in((gpio_num_t)-1, U1RXD_IN_IDX, false);
     ESP_ERROR_CHECK(gpio_set_pull_mode((gpio_num_t)GPIO_PIN_RCSIGNAL_TX, GPIO_FLOATING));
     ESP_ERROR_CHECK(gpio_set_pull_mode((gpio_num_t)GPIO_PIN_RCSIGNAL_RX, GPIO_FLOATING));
@@ -720,6 +723,7 @@ void ICACHE_RAM_ATTR CRSF::duplex_set_TX()
     #else
     gpio_matrix_out((gpio_num_t)GPIO_PIN_RCSIGNAL_TX, U1TXD_OUT_IDX, false, false);
     #endif
+  #endif
 #elif defined(PLATFORM_ESP8266)
     // Disable loopback to disconnect the RX pin from the TX pin
     //USC0(UART0) &= ~BIT(UCLBE);
@@ -819,8 +823,7 @@ void ICACHE_RAM_ATTR CRSF::ESP32uartTask(void *pvParameters)
     DBGLN("ESP32 CRSF UART LISTEN TASK STARTED");
     portDISABLE_INTERRUPTS();
     CRSF::Port.begin(TxToHandsetBauds[UARTcurrentBaudIdx], SERIAL_8N1,
-                     GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX,
-                     false, 500);
+                     GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX);
     CRSF::duplex_set_RX();
     portENABLE_INTERRUPTS();
     flush_port_input();
@@ -828,6 +831,9 @@ void ICACHE_RAM_ATTR CRSF::ESP32uartTask(void *pvParameters)
     for (;;)
     {
         handleUARTin();
+#if (GPIO_PIN_DEBUG_RX != GPIO_PIN_DEBUG_TX)
+        handleUARTout();
+#endif
     }
 }
 #endif // PLATFORM_ESP32
