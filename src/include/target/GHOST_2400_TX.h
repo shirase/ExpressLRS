@@ -34,6 +34,9 @@
 #define GPIO_PIN_OLED_MOSI          PB5
 #define GPIO_PIN_OLED_SCK           PB3
 
+#define GPIO_PIN_DEBUG_RX           PA3 // WTF! It's used for AMP_DET
+#define GPIO_PIN_DEBUG_TX           PA2
+
 // Output Power
 #define MinPower                    PWR_10mW
 #define MaxPower                    PWR_250mW
