@@ -8,18 +8,18 @@ def dbg_print(line=''):
     sys.stdout.flush()
 
 try:
-    import pexpect.fdpexpect
+    import streamexpect
 except ImportError:
     sys.stdout.write("Installing pexpect")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "pexpect"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "streamexpect"])
     try:
-        import pexpect.fdpexpect
+        import streamexpect
     except ImportError:
-        env.Execute("$PYTHONEXE -m pip install pexpect")
+        env.Execute("$PYTHONEXE -m pip install streamexpect")
         try:
-            import pexpect.fdpexpect
+            import streamexpect
         except ImportError:
-            pexpect = None
+            streamexpect = None
 
 def etx_passthrough_init(port, requestedBaudrate):
     sys.stdout.flush()
@@ -30,34 +30,36 @@ def etx_passthrough_init(port, requestedBaudrate):
         bytesize=8, parity='N', stopbits=1,
         timeout=1, xonxoff=0, rtscts=0)
 
-    rl = pexpect.fdpexpect.fdspawn(s, timeout=1)
+    with streamexpect.wrap(s) as rl:
+        rl.flush()
+        rl.write(b"set pulses 0\n")
+        rl.expect_bytes(b"set: ", timeout=1.0)
+        rl.expect_bytes(b"> ", timeout=1.0)
+        rl.write(b"set rfmod 0 power off\n")
+        rl.expect_bytes(b"set: ", timeout=1.0)
+        rl.expect_bytes(b"> ", timeout=1.0)
+        time.sleep(.5)
+        rl.write(b"set rfmod 0 bootpin 1\n")
+        rl.expect_bytes(b"set: ", timeout=1.0)
+        rl.expect_bytes(b"> ", timeout=1.0)
+        time.sleep(.1)
+        rl.write(b"set rfmod 0 power on\n")
+        rl.expect_bytes(b"set: ", timeout=1.0)
+        rl.expect_bytes(b"> ", timeout=1.0)
+        time.sleep(.1)
+        rl.write(b"set rfmod 0 bootpin 0\n")
+        rl.expect_bytes(b"set: ", timeout=1.0)
+        rl.expect_bytes(b"> ", timeout=1.0)
 
-    rl.sendline("set pulses 0")
-    rl.expect("set: ")
-    rl.expect("> ")
-    rl.sendline("set rfmod 0 power off")
-    rl.expect("set: ")
-    rl.expect("> ")
-    time.sleep(.5)
-    rl.sendline("set rfmod 0 bootpin 1")
-    rl.expect("set: ")
-    rl.expect("> ")
-    time.sleep(.1)
-    rl.sendline("set rfmod 0 power on")
-    rl.expect("set: ")
-    rl.expect("> ")
-    time.sleep(.1)
-    rl.sendline("set rfmod 0 bootpin 0")
-    rl.expect("set: ")
-    rl.expect("> ")
+        cmd = "serialpassthrough rfmod 0 %s" % requestedBaudrate
 
-    cmd = "serialpassthrough rfmod 0 %s" % requestedBaudrate
+        dbg_print("Enabling serial passthrough...")
+        dbg_print("  CMD: '%s'" % cmd)
+        rl.write(cmd.encode("utf-8"))
+        rl.write(b'\n')
+        time.sleep(.2)
 
-    dbg_print("Enabling serial passthrough...")
-    dbg_print("  CMD: '%s'" % cmd)
-    rl.sendline(cmd)
-    time.sleep(.2)
-    rl.close()
+    s.close()
     dbg_print("======== PASSTHROUGH DONE ========")
 
 def init_passthrough(source, target, env):
