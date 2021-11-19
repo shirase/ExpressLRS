@@ -32,6 +32,9 @@ def etx_passthrough_init(port, requestedBaudrate):
 
     rl = pexpect.fdpexpect.fdspawn(s, timeout=1)
 
+    rl.sendline("set pulses 0")
+    rl.expect("set: ")
+    rl.expect("> ")
     rl.sendline("set rfmod 0 power off")
     rl.expect("set: ")
     rl.expect("> ")
@@ -54,7 +57,7 @@ def etx_passthrough_init(port, requestedBaudrate):
     dbg_print("  CMD: '%s'" % cmd)
     rl.sendline(cmd)
     time.sleep(.2)
-    s.close()
+    rl.close()
     dbg_print("======== PASSTHROUGH DONE ========")
 
 def init_passthrough(source, target, env):
