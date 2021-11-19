@@ -92,6 +92,11 @@ StubbornReceiver TelemetryReceiver(ELRS_TELEMETRY_MAX_PACKAGES);
 StubbornSender MspSender(ELRS_MSP_MAX_PACKAGES);
 uint8_t CRSFinBuffer[CRSF_MAX_PACKET_LEN+1];
 
+#if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
+RTC_NOINIT_ATTR int passthroughStart = 0;
+bool passthroughRunning = false;
+#endif
+
 device_t *ui_devices[] = {
 #ifdef HAS_LED
   &LED_device,
@@ -872,6 +877,25 @@ void ProcessMSPPacket(mspPacket_t *packet)
   }
 }
 
+#if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
+void rebootIntoPassthrough()
+{
+  // reset 8285
+  digitalWrite(GPIO_PIN_BACKPACK_EN, LOW);
+  delay(100);
+  digitalWrite(GPIO_PIN_BACKPACK_EN, HIGH);
+
+  // wait for the line to go HIGH
+  while(!digitalRead(0)) {
+    delay(100);
+  }
+
+  // reboot into passthrough mode
+  passthroughStart = 0xDEADBEEF;
+  ESP.restart();
+}
+#endif
+
 /**
  * Target-specific initialization code called early in setup()
  * Setup GPIOs or other hardware, config not yet loaded
@@ -900,6 +924,23 @@ static void setupTarget()
 
 void setup()
 {
+  #if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
+    esp_reset_reason_t reason = esp_reset_reason();
+    if (reason == ESP_RST_SW)
+    {
+      if (passthroughStart == 0xDEADBEEF) {
+        passthroughRunning = true;
+        CRSF::Port.begin(115200, SERIAL_8N1, GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX);
+        LoggingBackpack.begin(115200, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
+        return;
+      }
+    }
+
+    pinMode(0, INPUT);
+    digitalWrite(GPIO_PIN_BACKPACK_EN, HIGH);
+    pinMode(GPIO_PIN_BACKPACK_EN, OUTPUT);
+  #endif
+
   #if defined(PLATFORM_ESP32)
     LoggingBackpack.begin(460800, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
   #else
@@ -968,6 +1009,22 @@ void setup()
 
 void loop()
 {
+  #if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
+    passthroughStart = 0;
+    if (passthroughRunning) {
+      disableLoopWDT();
+      for(;;) {
+        if(CRSF::Port.available()) LoggingBackpack.write(CRSF::Port.read());
+        if(LoggingBackpack.available()) CRSF::Port.write(LoggingBackpack.read());
+      }
+      return;
+    }
+
+    if (!digitalRead(0)) {
+      rebootIntoPassthrough();
+    }
+  #endif
+
   uint32_t now = millis();
 
   if (connectionState < MODE_STATES)
