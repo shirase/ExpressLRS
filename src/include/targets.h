@@ -73,6 +73,13 @@
 #define GPIO_LED_GREEN_INVERTED 0
 #endif
 
+#ifndef GPIO_PIN_DEBUG_RX
+#define GPIO_PIN_DEBUG_RX       UNDEF_PIN // use default
+#endif
+#ifndef GPIO_PIN_DEBUG_TX
+#define GPIO_PIN_DEBUG_TX       UNDEF_PIN // use default
+#endif
+
 #if defined(Regulatory_Domain_ISM_2400)
 // ISM 2400 band is use => undefine other requlatory domain defines
 #undef Regulatory_Domain_AU_915
