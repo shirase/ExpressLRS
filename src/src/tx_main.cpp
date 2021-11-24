@@ -92,11 +92,6 @@ StubbornReceiver TelemetryReceiver(ELRS_TELEMETRY_MAX_PACKAGES);
 StubbornSender MspSender(ELRS_MSP_MAX_PACKAGES);
 uint8_t CRSFinBuffer[CRSF_MAX_PACKET_LEN+1];
 
-#if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
-RTC_NOINIT_ATTR int passthroughStart = 0;
-bool passthroughRunning = false;
-#endif
-
 device_t *ui_devices[] = {
 #ifdef HAS_LED
   &LED_device,
@@ -878,7 +873,7 @@ void ProcessMSPPacket(mspPacket_t *packet)
 }
 
 #if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
-void rebootIntoPassthrough()
+void startPassthrough()
 {
   // reset 8285
   digitalWrite(GPIO_PIN_BACKPACK_EN, LOW);
@@ -890,9 +885,21 @@ void rebootIntoPassthrough()
     delay(100);
   }
 
-  // reboot into passthrough mode
-  passthroughStart = 0xDEADBEEF;
-  ESP.restart();
+  // stop everyhting
+  Radio.End();
+  hwTimer.stop();
+  CRSF::End();
+
+  // get ready for passthrough
+  CRSF::Port.begin(460800, SERIAL_8N1, GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX);
+  LoggingBackpack.begin(460800, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
+  disableLoopWDT();
+
+  // go hard!
+  for(;;) {
+    if(CRSF::Port.available()) LoggingBackpack.write(CRSF::Port.read());
+    if(LoggingBackpack.available()) CRSF::Port.write(LoggingBackpack.read());
+  }
 }
 #endif
 
@@ -925,17 +932,6 @@ static void setupTarget()
 void setup()
 {
   #if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
-    esp_reset_reason_t reason = esp_reset_reason();
-    if (reason == ESP_RST_SW)
-    {
-      if (passthroughStart == 0xDEADBEEF) {
-        passthroughRunning = true;
-        CRSF::Port.begin(460800, SERIAL_8N1, GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX);
-        LoggingBackpack.begin(460800, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
-        return;
-      }
-    }
-
     pinMode(0, INPUT);
     digitalWrite(GPIO_PIN_BACKPACK_EN, HIGH);
     pinMode(GPIO_PIN_BACKPACK_EN, OUTPUT);
@@ -1010,18 +1006,9 @@ void setup()
 void loop()
 {
   #if defined(GPIO_PIN_BACKPACK_EN) && GPIO_PIN_BACKPACK_EN != UNDEF_PIN
-    passthroughStart = 0;
-    if (passthroughRunning) {
-      disableLoopWDT();
-      for(;;) {
-        if(CRSF::Port.available()) LoggingBackpack.write(CRSF::Port.read());
-        if(LoggingBackpack.available()) CRSF::Port.write(LoggingBackpack.read());
-      }
-      return;
-    }
-
     if (!digitalRead(0)) {
-      rebootIntoPassthrough();
+      startPassthrough();
+      return;
     }
   #endif
 
