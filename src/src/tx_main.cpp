@@ -930,8 +930,8 @@ void setup()
     {
       if (passthroughStart == 0xDEADBEEF) {
         passthroughRunning = true;
-        CRSF::Port.begin(115200, SERIAL_8N1, GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX);
-        LoggingBackpack.begin(115200, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
+        CRSF::Port.begin(460800, SERIAL_8N1, GPIO_PIN_RCSIGNAL_RX, GPIO_PIN_RCSIGNAL_TX);
+        LoggingBackpack.begin(460800, SERIAL_8N1, GPIO_PIN_DEBUG_RX, GPIO_PIN_DEBUG_TX);
         return;
       }
     }
