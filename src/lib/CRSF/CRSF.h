@@ -21,6 +21,18 @@
 #include "driver/gpio.h"
 #endif
 
+#ifdef IBUS
+#include "ibus.h"
+#endif
+
+typedef enum {
+    SERIAL_PROTOCOL_AUTO,
+    SERIAL_PROTOCOL_CRSF,
+#ifdef IBUS
+    SERIAL_PROTOCOL_IBUS,
+#endif
+} serialProtocol_e;
+
 class CRSF
 {
 
@@ -37,6 +49,8 @@ public:
     static Stream *PortSecondary; // A second UART used to mirror telemetry out on the TX, not read from
 
     static volatile uint16_t ChannelDataIn[16];
+
+    static serialProtocol_e serialProtocol;
 
     /////Variables/////
 
