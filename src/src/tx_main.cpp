@@ -33,6 +33,7 @@ SX1280Driver Radio;
 #include "devWIFI.h"
 #include "devButton.h"
 #include "devVTX.h"
+#include "devPDET.h"
 
 //// CONSTANTS ////
 #define MSP_PACKET_SEND_INTERVAL 10LU
@@ -114,6 +115,9 @@ device_t *ui_devices[] = {
 #endif
 #ifdef HAS_BUTTON
   &Button_device,
+#endif
+#if defined(GPIO_PIN_PA_PDET) && GPIO_PIN_PA_PDET != UNDEF_PIN
+  &PDET_device,
 #endif
   &VTX_device
 };
