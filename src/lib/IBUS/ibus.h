@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <cmath>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #define IBUS_MAX_CHANNEL 18
 //In AFHDS there is 18 channels encoded in 14 slots (each slot is 2 byte long)
@@ -16,6 +17,8 @@
 
 #define IBUS_PACKET_HEADER 0x20
 #define IBUS_PACKET_HEADER_2 0x40
+
+#define IBUS_CHECKSUM_SIZE (2)
 
 typedef enum {
     IBUS_MEAS_TYPE_INTERNAL_VOLTAGE = 0x00, //0 Internal Voltage
@@ -142,3 +145,6 @@ typedef enum {
     IBUS_MEAS_VALUE_GPS_LON2         = 0x91, //2
     IBUS_MEAS_VALUE_GPS              = 0xfd //14 1byte fix 1byte satellites 4byte LAT 4byte LON 4byte alt
 } ibusSensorValue_e;
+
+bool ibusReceivePacket(uint8_t c);
+uint16_t ibusReadRawRC(uint8_t chan);

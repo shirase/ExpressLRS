@@ -558,7 +558,7 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
         {
             if (serialProtocol == SERIAL_PROTOCOL_AUTO) {
                 if (inChar == CRSF_ADDRESS_CRSF_TRANSMITTER ||
-                inChar == CRSF_SYNC_BYTE) 
+                    inChar == CRSF_SYNC_BYTE) 
                 {
                     serialProtocol = SERIAL_PROTOCOL_CRSF;
                 }
@@ -585,82 +585,60 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                     SerialInPacketPtr++;
                 }
             }
+
 #ifdef IBUS
-            else if (serialProtocol == SERIAL_PROTOCOL_IBUS) 
+            if (serialProtocol == SERIAL_PROTOCOL_IBUS) 
             {
-                // stage 1 wait for sync byte //
-                if (inChar == IBUS_PACKET_HEADER)
+                if (ibusReceivePacket((uint8_t)inChar)) 
                 {
-                    // we got sync, reset write pointer
+                    // convert ibus to CRSF
+                    rcPacket_t crsfRCPacket = CRSF::inBuffer.asRCPacket_t;
+                    crsfRCPacket.header.device_addr = CRSF_SYNC_BYTE;
+                    crsfRCPacket.header.frame_size = sizeof crsf_header_t + 2;
+                    crsfRCPacket.header.type = CRSF_SYNC_BYTE;
+
+                    GoodPktsCount++;
+                    if (ProcessPacket())
+                    {
+                        //delayMicroseconds(50);
+                        handleUARTout();
+                        RCdataCallback();
+                    }
+
+                    CRSFframeActive = false;
                     SerialInPacketPtr = 0;
                     SerialInPacketLen = 0;
-                    CRSFframeActive = true;
-                    SerialInBuffer[SerialInPacketPtr] = inChar;
-                    SerialInPacketPtr++;
                 }
+                return;
             }
-        }
 #endif
         else // frame is active so we do the processing
         {
-            if (serialProtocol == SERIAL_PROTOCOL_CRSF)
+            // first if things have gone wrong //
+            if (SerialInPacketPtr > CRSF_MAX_PACKET_LEN - 1)
             {
-                // first if things have gone wrong //
-                if (SerialInPacketPtr > CRSF_MAX_PACKET_LEN - 1)
+                // we reached the maximum allowable packet length, so start again because shit fucked up hey.
+                SerialInPacketPtr = 0;
+                SerialInPacketLen = 0;
+                CRSFframeActive = false;
+                return;
+            }
+
+            // special case where we save the expected pkt len to buffer //
+            if (SerialInPacketPtr == 1)
+            {
+                if (inChar <= CRSF_MAX_PACKET_LEN)
                 {
-                    // we reached the maximum allowable packet length, so start again because shit fucked up hey.
+                    SerialInPacketLen = inChar;
+                }
+                else
+                {
                     SerialInPacketPtr = 0;
                     SerialInPacketLen = 0;
                     CRSFframeActive = false;
                     return;
                 }
-
-                // special case where we save the expected pkt len to buffer //
-                if (SerialInPacketPtr == 1)
-                {
-                    if (inChar <= CRSF_MAX_PACKET_LEN)
-                    {
-                        SerialInPacketLen = inChar;
-                    }
-                    else
-                    {
-                        SerialInPacketPtr = 0;
-                        SerialInPacketLen = 0;
-                        CRSFframeActive = false;
-                        return;
-                    }
-                }
             }
-#ifdef IBUS
-            else if (serialProtocol == SERIAL_PROTOCOL_IBUS) 
-            {
-                // first if things have gone wrong //
-                if (SerialInPacketPtr > IBUS_SERIAL_RX_PACKET_LENGTH - 1)
-                {
-                    // we reached the maximum allowable packet length, so start again because shit fucked up hey.
-                    SerialInPacketPtr = 0;
-                    SerialInPacketLen = 0;
-                    CRSFframeActive = false;
-                    return;
-                }
-
-                // special case where we save the expected pkt len to buffer //
-                if (SerialInPacketPtr == 1)
-                {
-                    if (inChar == IBUS_PACKET_HEADER_2)
-                    {
-                        SerialInPacketLen = IBUS_BUFFSIZE;
-                    }
-                    else
-                    {
-                        SerialInPacketPtr = 0;
-                        SerialInPacketLen = 0;
-                        CRSFframeActive = false;
-                        return;
-                    }
-                }
-            }
-#endif
 
             SerialInBuffer[SerialInPacketPtr] = inChar;
             SerialInPacketPtr++;
