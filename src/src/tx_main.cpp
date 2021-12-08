@@ -34,6 +34,10 @@ SX1280Driver Radio;
 #include "devButton.h"
 #include "devVTX.h"
 
+#ifdef ANTENNA_TRACKER
+#include "tracker.h"
+#endif
+
 //// CONSTANTS ////
 #define MSP_PACKET_SEND_INTERVAL 10LU
 
@@ -1016,6 +1020,9 @@ void loop()
   if (TelemetryReceiver.HasFinishedData())
   {
       crsf.sendTelemetryToTX(CRSFinBuffer);
+#ifdef ANTENNA_TRACKER
+      parceCRSFTelemetry(CRSFinBuffer);
+#endif
       TelemetryReceiver.Unlock();
   }
 
