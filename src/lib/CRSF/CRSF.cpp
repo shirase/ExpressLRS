@@ -592,10 +592,10 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                 if (ibusReceivePacket((uint8_t)inChar)) 
                 {
                     // convert ibus to CRSF
-                    rcPacket_t crsfRCPacket = CRSF::inBuffer.asRCPacket_t;
-                    crsfRCPacket.header.device_addr = CRSF_SYNC_BYTE;
-                    crsfRCPacket.header.frame_size = sizeof crsf_header_t + 2;
-                    crsfRCPacket.header.type = CRSF_SYNC_BYTE;
+                    rcPacket_t *crsfRCPacket = &CRSF::inBuffer.asRCPacket_t;
+                    *crsfRCPacket.header.device_addr = CRSF_SYNC_BYTE;
+                    *crsfRCPacket.header.frame_size = (sizeof(crsf_channels_s)) + 2;
+                    *crsfRCPacket.header.type = CRSF_SYNC_BYTE;
 
                     GoodPktsCount++;
                     if (ProcessPacket())
