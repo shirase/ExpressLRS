@@ -596,7 +596,7 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                 if (ibusReceivePacket((uint8_t)inChar)) 
                 {
                     // convert ibus to CRSF
-                    CRSF::inBuffer.asRCPacket_t.header.device_addr = CRSF_SYNC_BYTE;
+                    /*CRSF::inBuffer.asRCPacket_t.header.device_addr = CRSF_SYNC_BYTE;
                     CRSF::inBuffer.asRCPacket_t.header.frame_size = (sizeof(crsf_channels_s)) + 2;
                     CRSF::inBuffer.asRCPacket_t.header.type = CRSF_FRAMETYPE_RC_CHANNELS_PACKED;
                     CRSF::inBuffer.asRCPacket_t.channels.ch0 = ibusReadRawRC(0);
@@ -619,10 +619,18 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                     GoodPktsCount++;
                     if (ProcessPacket())
                     {
-                        //delayMicroseconds(50);
                         handleUARTout();
                         RCdataCallback();
+                    }*/
+
+                    GoodPktsCount++;
+
+                    for (uint8_t i = 0; i < 16 - 1; i++) {
+                        ChannelDataIn[i] = ibusReadRawRC(i);
                     }
+
+                    handleUARTout();
+                    RCdataCallback();
 
                     CRSFframeActive = false;
                     SerialInPacketPtr = 0;
