@@ -4,6 +4,10 @@
 #include "logging.h"
 #include "helpers.h"
 
+#ifdef IBUS
+#include "ibus.h"
+#endif
+
 #if defined(PLATFORM_ESP32)
 HardwareSerial CRSF::Port = HardwareSerial(1);
 portMUX_TYPE FIFOmux = portMUX_INITIALIZER_UNLOCKED;
@@ -592,10 +596,9 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                 if (ibusReceivePacket((uint8_t)inChar)) 
                 {
                     // convert ibus to CRSF
-                    rcPacket_t *crsfRCPacket = &CRSF::inBuffer.asRCPacket_t;
-                    *crsfRCPacket.header.device_addr = CRSF_SYNC_BYTE;
-                    *crsfRCPacket.header.frame_size = (sizeof(crsf_channels_s)) + 2;
-                    *crsfRCPacket.header.type = CRSF_SYNC_BYTE;
+                    CRSF::inBuffer.asRCPacket_t.header.device_addr = CRSF_SYNC_BYTE;
+                    CRSF::inBuffer.asRCPacket_t.header.frame_size = (sizeof(crsf_channels_s)) + 2;
+                    CRSF::inBuffer.asRCPacket_t.header.type = CRSF_SYNC_BYTE;
 
                     GoodPktsCount++;
                     if (ProcessPacket())
@@ -612,6 +615,7 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                 return;
             }
 #endif
+        }
         else // frame is active so we do the processing
         {
             // first if things have gone wrong //
