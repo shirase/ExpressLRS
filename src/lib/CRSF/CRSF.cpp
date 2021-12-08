@@ -596,38 +596,11 @@ void ICACHE_RAM_ATTR CRSF::handleUARTin()
                 if (ibusReceivePacket((uint8_t)inChar)) 
                 {
                     // convert ibus to CRSF
-                    /*CRSF::inBuffer.asRCPacket_t.header.device_addr = CRSF_SYNC_BYTE;
-                    CRSF::inBuffer.asRCPacket_t.header.frame_size = (sizeof(crsf_channels_s)) + 2;
-                    CRSF::inBuffer.asRCPacket_t.header.type = CRSF_FRAMETYPE_RC_CHANNELS_PACKED;
-                    CRSF::inBuffer.asRCPacket_t.channels.ch0 = ibusReadRawRC(0);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch1 = ibusReadRawRC(1);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch2 = ibusReadRawRC(2);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch3 = ibusReadRawRC(3);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch4 = ibusReadRawRC(4);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch5 = ibusReadRawRC(5);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch6 = ibusReadRawRC(6);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch7 = ibusReadRawRC(7);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch8 = ibusReadRawRC(8);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch9 = ibusReadRawRC(9);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch10 = ibusReadRawRC(10);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch11 = ibusReadRawRC(11);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch12 = ibusReadRawRC(12);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch13 = ibusReadRawRC(13);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch14 = ibusReadRawRC(14);
-                    CRSF::inBuffer.asRCPacket_t.channels.ch15 = ibusReadRawRC(15);
-
-                    GoodPktsCount++;
-                    if (ProcessPacket())
-                    {
-                        handleUARTout();
-                        RCdataCallback();
-                    }*/
-
-                    GoodPktsCount++;
-
                     for (uint8_t i = 0; i < 16 - 1; i++) {
                         ChannelDataIn[i] = ibusReadRawRC(i);
                     }
+
+                    GoodPktsCount++;
 
                     handleUARTout();
                     RCdataCallback();
