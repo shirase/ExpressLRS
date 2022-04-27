@@ -20,3 +20,5 @@
 #define HighPower   PWR_250mW
 #define MaxPower    PWR_1000mW
 #define POWER_OUTPUT_VALUES {2,5,8,12,15}
+
+#define DEBUG_LOG
