@@ -27,3 +27,6 @@
 #define POWER_OUTPUT_VALUES {-17,-13,-9,-6,-2}
 
 #define Regulatory_Domain_ISM_2400 1
+
+#define USE_INNER_BLUETOOTH
+#define SERIAL_TELEMETRY

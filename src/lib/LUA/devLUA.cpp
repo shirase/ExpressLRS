@@ -230,6 +230,21 @@ static struct luaItem_selection luaDvrStopDelay = {
 
 //---------------------------- BACKPACK ------------------
 
+#if defined(SERIAL_TELEMETRY)
+struct luaItem_selection luaTelemetrySerialType = {
+    {"Telemetry type", CRSF_TEXT_SELECTION},
+    0, // value
+    "Off;Mavlink;MSP;CRSF;DBG",
+    emptySpace
+};
+struct luaItem_selection luaTelemetrySerialOut = {
+    {"Telemetry out", CRSF_TEXT_SELECTION},
+    0, // value
+    "Backpack;Bluetooth",
+    emptySpace
+};
+#endif
+
 static char luaBadGoodString[10];
 
 extern TxConfig config;
@@ -469,6 +484,16 @@ static void registerLuaParameters()
     sendLuaCommandResponse(&luaBind, arg < 5 ? 2 : 0, arg < 5 ? "Binding..." : "");
   });
 
+#if defined(SERIAL_TELEMETRY)
+  registerLUAParameter(&luaTelemetrySerialOut, [](uint8_t id, uint8_t arg){
+    config.SetTelemetrySerialOut(arg);
+  });
+
+  registerLUAParameter(&luaTelemetrySerialType, [](uint8_t id, uint8_t arg){
+    config.SetTelemetrySerialType(arg);
+  });
+#endif
+
   registerLUAParameter(&luaInfo);
   registerLUAParameter(&luaELRSversion);
   registerLUAParameter(NULL);
@@ -504,6 +529,12 @@ static int event()
   setLuaTextSelectionValue(&luaDvrStartDelay,config.GetDvrStartDelay());
   setLuaTextSelectionValue(&luaDvrStopDelay,config.GetDvrStopDelay());
   #endif // USE_TX_BACKPACK
+
+#ifdef SERIAL_TELEMETRY
+  setLuaTextSelectionValue(&luaTelemetrySerialOut, config.GetTelemetrySerialOut());
+  setLuaTextSelectionValue(&luaTelemetrySerialType, config.GetTelemetrySerialType());
+#endif
+
   return DURATION_IMMEDIATELY;
 }
 

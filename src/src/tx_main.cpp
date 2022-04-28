@@ -38,6 +38,12 @@ SX1280Driver Radio;
 #include "devThermal.h"
 #include "devPDET.h"
 #include "devBackpack.h"
+#ifdef SERIAL_TELEMETRY
+#include "telemetry_serial.h"
+#endif
+#ifdef USE_INNER_BLUETOOTH
+#include "bluetooth.h"
+#endif
 
 //// CONSTANTS ////
 #define MSP_PACKET_SEND_INTERVAL 10LU
@@ -107,6 +113,12 @@ device_affinity_t ui_devices[] = {
 #endif
 #ifdef HAS_BLE
   {&BLE_device, 1},
+#endif
+#ifdef SERIAL_TELEMETRY
+  {&TelemetrySerial::device, 1},
+#endif
+#ifdef USE_INNER_BLUETOOTH
+  {&Bluetooth_device, 1},
 #endif
 #ifdef HAS_BUZZER
   {&Buzzer_device, 1},

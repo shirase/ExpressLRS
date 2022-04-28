@@ -46,6 +46,9 @@ MSP::processReceivedByte(uint8_t c)
         case MSP_HEADER_START:
             // Waiting for 'X' (MSPv2 native)
             switch (c) {
+                case 'M':
+                    m_inputState = MSP_HEADER_M;
+                    break;
                 case 'X':
                     m_inputState = MSP_HEADER_X;
                     break;
@@ -55,13 +58,14 @@ MSP::processReceivedByte(uint8_t c)
             }
             break;
 
-        case MSP_HEADER_X:
+        case MSP_HEADER_M:
             // Wait for the packet type (cmd or req)
-            m_inputState = MSP_HEADER_V2_NATIVE;
+            m_inputState = MSP_HEADER_V1;
 
             // Start of a new packet
             // reset the packet, offset iterator, and CRC
             m_packet.reset();
+            m_packet.version = 1;
             m_offset = 0;
             m_crc = 0;
 
@@ -79,6 +83,60 @@ MSP::processReceivedByte(uint8_t c)
             }
             break;
 
+        case MSP_HEADER_X:
+            // Wait for the packet type (cmd or req)
+            m_inputState = MSP_HEADER_V2_NATIVE;
+
+            // Start of a new packet
+            // reset the packet, offset iterator, and CRC
+            m_packet.reset();
+            m_packet.version = 2;
+            m_offset = 0;
+            m_crc = 0;
+
+            switch (c) {
+                case '<':
+                    m_packet.type = MSP_PACKET_COMMAND;
+                    break;
+                case '>':
+                    m_packet.type = MSP_PACKET_RESPONSE;
+                    break;
+                default:
+                    m_packet.type = MSP_PACKET_UNKNOWN;
+                    m_inputState = MSP_IDLE;
+                    break;
+            }
+            break;
+
+        case MSP_HEADER_V1:
+            // Read bytes until we have a full header
+            m_inputBuffer[m_offset++] = c;
+            m_crc ^= c;
+
+            // If we've received the correct amount of bytes for a full header
+            if (m_offset == sizeof(mspHeaderV1_t)) {
+                // Copy header values into packet
+                mspHeaderV1_t* header = (mspHeaderV1_t*)&m_inputBuffer[0];
+                m_packet.payloadSize = header->size;
+
+                if (m_packet.payloadSize > sizeof m_packet.payload) {
+                    m_inputState = MSP_IDLE;
+                    m_packet.type = MSP_PACKET_UNKNOWN;
+                    return false;
+                }
+
+                m_packet.function = header->cmd;
+                m_packet.flags = 0;
+                // reset the offset iterator for re-use in payload below
+                m_offset = 0;
+                if (m_packet.payloadSize) {
+                    m_inputState = MSP_PAYLOAD_V1;
+                } else {
+                    m_inputState = MSP_CHECKSUM_V1;
+                }
+            }
+            break;
+
         case MSP_HEADER_V2_NATIVE:
             // Read bytes until we have a full header
             m_inputBuffer[m_offset++] = c;
@@ -89,11 +147,35 @@ MSP::processReceivedByte(uint8_t c)
                 // Copy header values into packet
                 mspHeaderV2_t* header = (mspHeaderV2_t*)&m_inputBuffer[0];
                 m_packet.payloadSize = header->payloadSize;
+
+                if (m_packet.payloadSize > sizeof m_packet.payload) {
+                    m_inputState = MSP_IDLE;
+                    m_packet.type = MSP_PACKET_UNKNOWN;
+                    return false;
+                }
+
                 m_packet.function = header->function;
                 m_packet.flags = header->flags;
                 // reset the offset iterator for re-use in payload below
                 m_offset = 0;
-                m_inputState = MSP_PAYLOAD_V2_NATIVE;
+                
+                if (m_packet.payloadSize) {
+                    m_inputState = MSP_PAYLOAD_V2_NATIVE;
+                } else {
+                    m_inputState = MSP_CHECKSUM_V2_NATIVE;
+                }
+            }
+            break;
+
+        case MSP_PAYLOAD_V1:
+            // Read bytes until we reach payloadSize
+            m_packet.payload[m_offset++] = c;
+            m_crc ^= c;
+
+            // If we've received the correct amount of bytes for payload
+            if (m_offset == m_packet.payloadSize) {
+                // Then we're up to the CRC
+                m_inputState = MSP_CHECKSUM_V1;
             }
             break;
 
@@ -109,6 +191,18 @@ MSP::processReceivedByte(uint8_t c)
             }
             break;
 
+        case MSP_CHECKSUM_V1:
+            // Assert that the checksums match
+            if (m_crc == c) {
+                m_inputState = MSP_COMMAND_RECEIVED;
+            }
+            else {
+                DBGLN("CRC failure on MSP packet - Got %d expected %d", c, m_crc);
+                m_inputState = MSP_IDLE;
+                m_packet.type = MSP_PACKET_UNKNOWN;
+            }
+            break;
+
         case MSP_CHECKSUM_V2_NATIVE:
             // Assert that the checksums match
             if (m_crc == c) {
@@ -117,6 +211,7 @@ MSP::processReceivedByte(uint8_t c)
             else {
                 DBGLN("CRC failure on MSP packet - Got %d expected %d", c, m_crc);
                 m_inputState = MSP_IDLE;
+                m_packet.type = MSP_PACKET_UNKNOWN;
             }
             break;
         
@@ -146,6 +241,7 @@ MSP::markPacketReceived()
     // Set input state to idle, ready to receive the next packet
     // The current packet data will be discarded internally
     m_inputState = MSP_IDLE;
+    m_packet.type = MSP_PACKET_UNKNOWN;
 }
 
 bool
