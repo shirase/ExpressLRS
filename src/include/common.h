@@ -42,6 +42,7 @@ typedef enum
     noCrossfire,
     wifiUpdate,
     bleJoystick,
+    bluetooth,
     // Failure states go below here to display immediately
     FAILURE_STATES,
     radioFailed

@@ -19,6 +19,7 @@
 #include "devThermal.h"
 #include "devPDET.h"
 #include "devBackpack.h"
+#include "bluetooth.h"
 
 //// CONSTANTS ////
 #define MSP_PACKET_SEND_INTERVAL 10LU
@@ -87,6 +88,9 @@ device_affinity_t ui_devices[] = {
 #endif
 #ifdef HAS_BLE
   {&BLE_device, 1},
+#endif
+#ifdef USE_INNER_BLUETOOTH
+  {&Bluetooth_device, 1},
 #endif
 #ifdef HAS_BUZZER
   {&Buzzer_device, 1},
