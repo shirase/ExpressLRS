@@ -4,6 +4,10 @@
 #include "elrs_eeprom.h"
 #include "options.h"
 
+#ifdef SERIAL_TELEMETRY
+#include "telemetry_serial.h"
+#endif
+
 #if defined(PLATFORM_ESP32)
 #include <nvs_flash.h>
 #include <nvs.h>
@@ -93,6 +97,10 @@ public:
     uint8_t  GetDvrStopDelay() const { return m_config.dvrStopDelay; }
     tx_button_color_t const *GetButtonActions(uint8_t button) const { return &m_config.buttonColors[button]; }
     model_config_t const &GetModelConfig(uint8_t model) const { return m_config.model_config[model]; }
+#ifdef SERIAL_TELEMETRY
+    uint8_t GetTelemetrySerialType() const { return TelemetrySerial::telemetryType; }
+    uint8_t GetTelemetrySerialOut() const { return telemetrySerialOut; }
+#endif
 
     // Setters
     void SetRate(uint8_t rate);
@@ -116,6 +124,10 @@ public:
     void SetDvrStartDelay(uint8_t dvrStartDelay);
     void SetDvrStopDelay(uint8_t dvrStopDelay);
     void SetButtonActions(uint8_t button, tx_button_color_t actions[2]);
+#ifdef SERIAL_TELEMETRY
+    bool SetTelemetrySerialType(uint8_t value);
+    bool SetTelemetrySerialOut(uint8_t value);
+#endif
 
     // State setters
     bool SetModelId(uint8_t modelId);
@@ -134,6 +146,7 @@ private:
 #if defined(PLATFORM_ESP32)
     nvs_handle  handle;
 #endif
+    uint8_t telemetrySerialOut;
 };
 
 extern TxConfig config;

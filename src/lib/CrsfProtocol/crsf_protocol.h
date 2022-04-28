@@ -401,9 +401,8 @@ static inline uint16_t ICACHE_RAM_ATTR BIT_to_CRSF(uint8_t val)
     return (val) ? CRSF_CHANNEL_VALUE_2000 : CRSF_CHANNEL_VALUE_1000;
 }
 
-static inline uint8_t ICACHE_RAM_ATTR CalcCRCMsp(uint8_t *data, int length)
+static inline uint8_t ICACHE_RAM_ATTR CalcCRCMsp(uint8_t *data, int length, uint8_t crc = 0)
 {
-    uint8_t crc = 0;
     for (uint8_t i = 0; i < length; ++i) {
         crc = crc ^ *data++;
     }

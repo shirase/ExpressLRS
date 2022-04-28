@@ -6,6 +6,10 @@
 #include "logging.h"
 #include "helpers.h"
 
+#ifdef SERIAL_TELEMETRY
+#include "telemetry_serial.h"
+#endif
+
 #if defined(CRSF_TX_MODULE)
 #if defined(PLATFORM_ESP32)
 #include <soc/uart_reg.h>
@@ -292,6 +296,10 @@ void ICACHE_RAM_ATTR CRSF::sendTelemetryToTX(uint8_t *data)
 #ifdef PLATFORM_ESP32
         portEXIT_CRITICAL(&FIFOmux);
 #endif
+
+#ifdef SERIAL_TELEMETRY
+        TelemetrySerial::handleCrsfRxTelemetry(data);
+#endif
     }
 }
 
@@ -509,15 +517,74 @@ void CRSF::UnlockMspMessage()
     }
 }
 
+#define TELEMETRY_MSP_VERSION    1
+#define TELEMETRY_MSP_VER_SHIFT  5
+#define TELEMETRY_MSP_VER_MASK   (0x7 << TELEMETRY_MSP_VER_SHIFT)
+#define TELEMETRY_MSP_SEQ_MASK   0x0F
+#define TELEMETRY_MSP_START_FLAG (1 << 4)
+
 void ICACHE_RAM_ATTR CRSF::AddMspMessage(mspPacket_t* packet)
 {
+    if (packet->function >= 0xFF) {
+        // MSP V2 not supported by CRSF telemetry
+        return;
+    }
+
+    uint8_t outBuffer[ENCAPSULATED_MSP_MAX_FRAME_LEN + CRSF_FRAME_LENGTH_EXT_TYPE_CRC + CRSF_FRAME_NOT_COUNTED_BYTES];
+
     if (packet->payloadSize > ENCAPSULATED_MSP_MAX_PAYLOAD_SIZE)
     {
+        // send MSP sequence
+        uint8_t seqNumber = 0;
+        uint8_t payloadOffset = 0;
+
+        while (payloadOffset < packet->payloadSize + 1) { // 1 byte for MSP CRC
+            uint8_t header = TELEMETRY_MSP_VERSION << TELEMETRY_MSP_VER_SHIFT | (seqNumber & TELEMETRY_MSP_SEQ_MASK);
+            seqNumber++;
+
+            uint8_t outBufferOffset = 0;
+            uint8_t mspFrameRemaining = ENCAPSULATED_MSP_MAX_FRAME_LEN;
+            outBuffer[outBufferOffset++] = CRSF_ADDRESS_BROADCAST;                                     // address
+            outBuffer[outBufferOffset++] = ENCAPSULATED_MSP_MAX_PAYLOAD_SIZE + ENCAPSULATED_MSP_HEADER_CRC_LEN + CRSF_FRAME_LENGTH_EXT_TYPE_CRC; // length
+            outBuffer[outBufferOffset++] = CRSF_FRAMETYPE_MSP_WRITE;                                    // packet type
+            outBuffer[outBufferOffset++] = CRSF_ADDRESS_FLIGHT_CONTROLLER;                              // destination
+            outBuffer[outBufferOffset++] = CRSF_ADDRESS_RADIO_TRANSMITTER;                              // origin
+
+            // Encapsulated MSP payload
+            if (seqNumber == 0) {
+                outBuffer[outBufferOffset++] = header | TELEMETRY_MSP_START_FLAG; // header
+                mspFrameRemaining--;
+                outBuffer[outBufferOffset++] = packet->payloadSize; // mspPayloadSize
+                mspFrameRemaining--;
+                outBuffer[outBufferOffset++] = packet->function;    // packet->cmd
+                mspFrameRemaining--;
+            } else {
+                outBuffer[outBufferOffset++] = header; // header
+                mspFrameRemaining--;
+            }
+
+            while (mspFrameRemaining > 0) {
+                mspFrameRemaining--;
+                // copy packet payload into outBuffer
+                outBuffer[outBufferOffset++] = packet->payload[payloadOffset++];
+                if (payloadOffset == packet->payloadSize) {
+                    // add MSP crc
+                    uint8_t crc = 0;
+                    crc = CalcCRCMsp((uint8_t *)&packet->payloadSize, 1, crc);
+                    crc = CalcCRCMsp((uint8_t *)&packet->function, 1, crc);
+                    outBuffer[outBufferOffset++] = CalcCRCMsp(packet->payload, packet->payloadSize, crc);
+                    break;
+                }
+            }
+
+            outBuffer[outBufferOffset] = crsf_crc.calc(&outBuffer[2], outBufferOffset - 2);
+            AddMspMessage(outBufferOffset + 1, outBuffer);
+        }
+
         return;
     }
 
     const uint8_t totalBufferLen = packet->payloadSize + ENCAPSULATED_MSP_HEADER_CRC_LEN + CRSF_FRAME_LENGTH_EXT_TYPE_CRC + CRSF_FRAME_NOT_COUNTED_BYTES;
-    uint8_t outBuffer[ENCAPSULATED_MSP_MAX_FRAME_LEN + CRSF_FRAME_LENGTH_EXT_TYPE_CRC + CRSF_FRAME_NOT_COUNTED_BYTES];
 
     // CRSF extended frame header
     outBuffer[0] = CRSF_ADDRESS_BROADCAST;                                      // address

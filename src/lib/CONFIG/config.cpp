@@ -638,6 +638,35 @@ TxConfig::SetModelId(uint8_t modelId)
 
     return false;
 }
+
+#ifdef SERIAL_TELEMETRY
+bool
+TxConfig::SetTelemetrySerialType(uint8_t value)
+{
+    if (TelemetrySerial::telemetryType != value)
+    {
+        TelemetrySerial::telemetryType = value;
+        m_modified |= MODEL_CHANGED;
+        return true;
+    }
+
+    return false;
+}
+
+bool
+TxConfig::SetTelemetrySerialOut(uint8_t value)
+{
+    if (telemetrySerialOut != value)
+    {
+        telemetrySerialOut = value;
+        m_modified |= MODEL_CHANGED;
+        return true;
+    }
+
+    return false;
+}
+#endif
+
 #endif
 
 /////////////////////////////////////////////////////

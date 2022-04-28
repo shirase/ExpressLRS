@@ -1,12 +1,9 @@
 #pragma once
 
 #include "targets.h"
+#include "telemetry_protocol.h"
 
-// TODO: MSP_PORT_INBUF_SIZE should be changed to
-// dynamically allocate array length based on the payload size
-// Hardcoding payload size to 8 bytes for now, since MSP is
-// limited to a 4 byte payload on the BF side
-#define MSP_PORT_INBUF_SIZE 8
+#define MSP_PORT_INBUF_SIZE ELRS_MSP_BUFFER
 
 #define CHECK_PACKET_PARSING() \
   if (packet->readError) {\
@@ -16,8 +13,13 @@
 typedef enum {
     MSP_IDLE,
     MSP_HEADER_START,
-    MSP_HEADER_X,
 
+    MSP_HEADER_M,
+    MSP_HEADER_V1,
+    MSP_PAYLOAD_V1,
+    MSP_CHECKSUM_V1,
+
+    MSP_HEADER_X,
     MSP_HEADER_V2_NATIVE,
     MSP_PAYLOAD_V2_NATIVE,
     MSP_CHECKSUM_V2_NATIVE,
@@ -30,6 +32,11 @@ typedef enum {
     MSP_PACKET_COMMAND,
     MSP_PACKET_RESPONSE
 } mspPacketType_e;
+
+typedef struct __attribute__((packed)) {
+    uint8_t size;
+    uint8_t cmd;
+} mspHeaderV1_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t  flags;
@@ -45,6 +52,7 @@ typedef struct {
     uint8_t         payload[MSP_PORT_INBUF_SIZE];
     uint16_t        payloadReadIterator;
     bool            readError;
+    uint8_t         version;
 
     void reset()
     {
@@ -54,6 +62,7 @@ typedef struct {
         payloadSize = 0;
         payloadReadIterator = 0;
         readError = false;
+        version = 0;
     }
 
     void addByte(uint8_t b)
@@ -100,3 +109,5 @@ private:
     mspPacket_t m_packet;
     uint8_t     m_crc;
 };
+
+uint8_t crc8_dvb_s2(uint8_t crc, unsigned char a);
