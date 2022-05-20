@@ -3,6 +3,8 @@
 #if defined(PLATFORM_ESP32) && defined(USE_INNER_BLUETOOTH)
 
 BluetoothSerial SerialBT;
+bool SerialBTInit = false;
+bool MSPSerialReadyToSend = false;
 
 static void ProcessMSPPacket(mspPacket_t *packet)
 {
@@ -20,13 +22,25 @@ void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
 
 static int start()
 {
-    SerialBT.begin("ESP32");
-    SerialBT.register_callback(callback);
     return DURATION_IMMEDIATELY;
 }
 
 static int timeout()
 {
+    if (MSPSerialReadyToSend) {
+      MSPSerialReadyToSend = false;
+      if (!SerialBTInit) {
+        SerialBTInit = true;
+        SerialBT.begin("ESP32");
+        SerialBT.register_callback(callback);
+      }
+      return 1000;
+    }
+
+    if (!SerialBTInit) {
+      return 1000;
+    }
+
     if (SerialBT.available())
     {
         if (msp.processReceivedByte(SerialBT.read()))
@@ -40,18 +54,10 @@ static int timeout()
     return DURATION_IMMEDIATELY;
 }
 
-static int event()
-{
-    if (connectionState == bluetooth) {
-        return DURATION_IMMEDIATELY;
-    }
-    return DURATION_IMMEDIATELY;
-}
-
 device_t Bluetooth_device = {
   .initialize = NULL,
   .start = start,
-  .event = event,
+  .event = NULL,
   .timeout = timeout
 };
 

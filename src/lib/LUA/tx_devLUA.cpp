@@ -139,6 +139,14 @@ static struct luaItem_command luaVRxBackpackUpdate = {
     lcsIdle, // step
     emptySpace
 };
+
+#ifdef USE_MSP_SERIAL
+static struct luaItem_command luaMSPSerial = {
+    {"Enable MSP Serial", CRSF_COMMAND},
+    lcsIdle, // step
+    emptySpace
+};
+#endif
 #endif // USE_TX_BACKPACK
 //---------------------------- WiFi -----------------------------
 
@@ -243,6 +251,9 @@ extern bool RxWiFiReadyToSend;
 #if defined(USE_TX_BACKPACK)
 extern bool TxBackpackWiFiReadyToSend;
 extern bool VRxBackpackWiFiReadyToSend;
+#ifdef USE_MSP_SERIAL
+extern bool MSPSerialReadyToSend;
+#endif
 #endif
 #ifdef PLATFORM_ESP32
 extern unsigned long rebootTime;
@@ -421,6 +432,12 @@ static void luahandSimpleSendCmd(struct luaPropertiesCommon *item, uint8_t arg)
     {
       VRxBackpackWiFiReadyToSend = true;
     }
+#ifdef USE_MSP_SERIAL
+    else if ((void *)item == (void *)&luaMSPSerial)
+    {
+      MSPSerialReadyToSend = true;
+    }
+#endif
 #endif
     sendLuaCommandResponse((struct luaItem_command *)item, lcsExecuting, msg);
   } /* if doExecute */
@@ -622,6 +639,9 @@ static void registerLuaParameters()
   #if defined(USE_TX_BACKPACK)
   registerLUAParameter(&luaTxBackpackUpdate, &luahandSimpleSendCmd, luaWiFiFolder.common.id);
   registerLUAParameter(&luaVRxBackpackUpdate, &luahandSimpleSendCmd, luaWiFiFolder.common.id);
+  #ifdef USE_MSP_SERIAL
+  registerLUAParameter(&luaMSPSerial, &luahandSimpleSendCmd, luaWiFiFolder.common.id);
+  #endif
   // Backpack folder
   registerLUAParameter(&luaBackpackFolder);
   registerLUAParameter(
