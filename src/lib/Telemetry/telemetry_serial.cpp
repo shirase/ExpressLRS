@@ -266,7 +266,7 @@ ICACHE_RAM_ATTR bool TelemetrySerial::handleCrsfRxTelemetry(uint8_t *data)
                 memcpy(&buf[5], mspStart + 1, mspPayloadSize + 1); // msp payload + crc byte
                 addToSend(sizeof buf, buf);
             }
-            else if (mspVersion == 2) {
+            /*else if (mspVersion == 2) {
                 uint8_t buf[3 + sizeof (mspHeaderV2_t) + mspPayloadSize + 1]; // prefix + header + payload + crc
 
                 if (mspHeader & TELEMETRY_MSP_START_FLAG) {
@@ -294,7 +294,7 @@ ICACHE_RAM_ATTR bool TelemetrySerial::handleCrsfRxTelemetry(uint8_t *data)
                 p += sizeof m_crc;
                 
                 addToSend(sizeof buf, buf);
-            }
+            }*/
             
             return true;
         }

@@ -14,7 +14,9 @@ extern hwTimer hwTimer;
 
 void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   if (event == ESP_SPP_SRV_OPEN_EVT) {
+#ifdef SERIAL_TELEMETRY
     TelemetrySerial::start(&SerialBT);
+#endif
   } 
   /*else if (event == ESP_SPP_SRV_STOP_EVT) {
     TelemetrySerial::stop();
@@ -28,6 +30,7 @@ static int start()
 
 static int timeout()
 {
+#ifdef SERIAL_TELEMETRY
   if (config.GetTelemetrySerialOut()) {
     if (!SerialBTInit) {
       SerialBTInit = true;
@@ -47,6 +50,7 @@ static int timeout()
       return 1000;
     }
   }
+#endif
 
   return 1000;
 }
